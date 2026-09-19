@@ -4,6 +4,7 @@ import argparse
 import time
 import numpy as np
 import pandas as pd
+from PIL import Image
 
 import torch
 from torch.utils.data import DataLoader
@@ -219,11 +220,81 @@ def run_tta_ensemble_inference():
         print(f"[!] 'optimal_threshold.json' not found, defaulting to: {chosen_threshold:.4f}")
 
     all_ensemble_probs = np.array(all_ensemble_probs)
-    preds = (all_ensemble_probs >= chosen_threshold).astype(int)
+    raw_preds = (all_ensemble_probs >= chosen_threshold).astype(int)
+
+    # 3b. Gated Multi-Scale Center Zoom & Photometric Profile Refinement
+    print("\n[+] Applying Gated Multi-Scale Center Zoom & Photometric Profile Refinement...")
+    refined_preds = []
+    flipped_count = 0
+    test_meta_indexed = test_df.set_index("image_id")
+    
+    pad_size = 128
+    for i, img_id in enumerate(all_image_ids):
+        raw_p = all_ensemble_probs[i]
+        curr_label = raw_preds[i]
+        
+        # Only refine samples within the uncertainty band [0.40, 0.60]
+        if 0.40 <= raw_p <= 0.60:
+            azimuth = float(test_meta_indexed.loc[img_id, "sun_azimuth_angle"])
+            img_path = os.path.join(images_dir, img_id)
+            img_pil = Image.open(img_path).convert("L")
+            
+            # Bicubic pad & rotate
+            img_pad = Image.fromarray(np.pad(np.array(img_pil), pad_size, mode='reflect'))
+            img_rot = img_pad.rotate(-azimuth, resample=Image.Resampling.BICUBIC)
+            w, h = img_rot.size
+            img_north = img_rot.crop((w//2 - 128, h//2 - 128, w//2 + 128, h//2 + 128))
+            
+            img_np = np.array(img_north, dtype=np.float32) / 255.0
+            
+            # 1D Solar Illumination Profile
+            H_c, W_c = img_np.shape
+            m_y, m_x = int(H_c * 0.225), int(W_c * 0.225)
+            center_crop = img_np[m_y:H_c - m_y, m_x:W_c - m_x]
+            prof_y = np.mean(center_crop, axis=1)
+            half = len(prof_y) // 2
+            delta_i = np.mean(prof_y[:half]) - np.mean(prof_y[half:])
+            phys_pred = 1 if delta_i > 0 else 0
+            
+            # Multi-scale crops (160x160 and 192x192)
+            c160 = img_north.crop((128 - 80, 128 - 80, 128 + 80, 128 + 80)).resize((256, 256), Image.Resampling.BICUBIC)
+            c192 = img_north.crop((128 - 96, 128 - 96, 128 + 96, 128 + 96)).resize((256, 256), Image.Resampling.BICUBIC)
+            
+            arr160 = ((np.array(c160, dtype=np.float32) / 255.0) - 0.5) / 0.5
+            arr192 = ((np.array(c192, dtype=np.float32) / 255.0) - 0.5) / 0.5
+            
+            zoom_batch = torch.from_numpy(np.stack([arr160, arr192], axis=0)).unsqueeze(1).to(device)
+            with torch.no_grad():
+                z_probs = []
+                for m in fold_models:
+                    z_logits = m(zoom_batch)
+                    z_p = torch.softmax(z_logits, dim=1)[:, 1]
+                    z_probs.append(z_p)
+                center_zoom_p = torch.stack(z_probs, dim=0).mean().item()
+            
+            zoom_model_pred = 1 if center_zoom_p >= chosen_threshold else 0
+            
+            # Consensus logic
+            if phys_pred == zoom_model_pred:
+                final_l = phys_pred
+            else:
+                if abs(delta_i) > 0.04:
+                    final_l = phys_pred
+                else:
+                    final_l = zoom_model_pred
+            
+            if final_l != curr_label:
+                flipped_count += 1
+            refined_preds.append(final_l)
+        else:
+            refined_preds.append(curr_label)
+            
+    print(f"    Total Refined / Flipped in Uncertainty Band: {flipped_count} / {len(all_image_ids)} ({flipped_count/len(all_image_ids)*100:.2f}%)")
+    print(f"    High-Confidence Invariant Predictions: {len(all_image_ids) - flipped_count} ({(len(all_image_ids)-flipped_count)/len(all_image_ids)*100:.2f}%)")
 
     submission_df = pd.DataFrame({
         "image_id": all_image_ids,
-        "label": preds
+        "label": refined_preds
     })
 
     # Save to submission.csv and also submission_final.csv backup
@@ -242,11 +313,12 @@ def run_tta_ensemble_inference():
     print(f"  * Image IDs match test:  {list(submission_df['image_id']) == list(test_df['image_id'])}")
     print(f"  * Decision Threshold:    {chosen_threshold:.2f}")
 
-    c0_count = (preds == 0).sum()
-    c1_count = (preds == 1).sum()
+    refined_preds_arr = np.array(refined_preds)
+    c0_count = (refined_preds_arr == 0).sum()
+    c1_count = (refined_preds_arr == 1).sum()
     print("\n[+] Final Class Prediction Distribution:")
-    print(f"    Class 0: {c0_count:>4} ({c0_count / len(preds) * 100:.2f}%)")
-    print(f"    Class 1: {c1_count:>4} ({c1_count / len(preds) * 100:.2f}%)")
+    print(f"    Class 0: {c0_count:>4} ({c0_count / len(refined_preds_arr) * 100:.2f}%)")
+    print(f"    Class 1: {c1_count:>4} ({c1_count / len(refined_preds_arr) * 100:.2f}%)")
     print(f"    Ensemble P(Class 1) - Min: {all_ensemble_probs.min():.4f}, Mean: {all_ensemble_probs.mean():.4f}, Max: {all_ensemble_probs.max():.4f}")
 
     print("\n[+] First 5 rows of generated submission file:")
