@@ -1,0 +1,8 @@
+{
+    "model_name": "resnet18",
+    "optimal_threshold": 0.47,
+    "oof_balanced_accuracy_at_optimal": 0.6974760336370007,
+    "oof_balanced_accuracy_at_050": 0.695834898388227,
+    "mean_fold_score": 0.6958257412357514,
+    "std_fold_score": 0.012294275919899051
+}

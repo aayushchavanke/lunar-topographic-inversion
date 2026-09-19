@@ -1,0 +1,32 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Large Datasets (Do NOT commit raw competition images to GitHub)
+train_images/
+eval_images/
+test_images/
+images/
+
+# Large Model Checkpoints (GitHub hard-blocks files > 100MB, e.g. best_model.pth)
+# Share checkpoints via Google Drive, OneDrive, or GitHub Releases
+*.pt
+*.pth
+*.ckpt
+*.bin
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Submission logs & temporary media
+*.log
+.tempmediaStorage/
