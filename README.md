@@ -80,6 +80,38 @@ To eliminate local sensor noise and resolve ambiguous terrain, every test image 
 * **Validation Weighting:** Folds are weighted by their cross-validation score ($w_i \propto (\text{Score}_i - 0.50)^2$), giving highest voting weight to **Fold 2 (24.53% weight, 71.73% Val Acc)**.
 * **Pass Count:** 8 views × 5 fold models = **40 forward passes per test image** (80,000 total evaluations across 2,000 images).
 
+```
+                       [ Single Test Image: eval_00001.png ]
+                                         │
+        ┌────────────────────────────────┴────────────────────────────────┐
+        │ 8 Physics-Safe TTA Views (Sun locked to North/Top)              │
+        │   1. Standard Canonical 100% scale                              │
+        │   2. 96% Multi-Scale Center Crop (Bicubic)                      │
+        │   3. 92% Multi-Scale Center Crop (Bicubic)                      │
+        │   4. Photometric Contrast (+5%)                                 │
+        │   5. Photometric Contrast (-5%)                                 │
+        │   6. Photometric Contrast (+10%)                                │
+        │   7. Micro-Rotation (+2.5° with Reflection Padding)             │
+        │   8. Micro-Rotation (-2.5° with Reflection Padding)             │
+        └────────────────────────────────┬────────────────────────────────┘
+                                         │
+                 Feed all 8 Views into all 5 Trained Models:
+                                         │
+       ┌───────────┬───────────┬─────────┴─┬───────────┬───────────┐
+       ▼           ▼           ▼           ▼           ▼           ▼
+   [Model 0]   [Model 1]   [Model 2]   [Model 3]   [Model 4]
+   (Weight:    (Weight:    (Weight:    (Weight:    (Weight:
+    18.30%)     20.15%)     24.53%⭐)   16.97%)     20.06%)
+       │           │           │           │           │
+   8 passes    8 passes    8 passes    8 passes    8 passes
+       └───────────┴───────────┼───────────┴───────────┘
+                               ▼
+            TOTAL = 8 x 5 = 40 FORWARD PASSES
+                               │
+                               ▼
+             Validation-Weighted Soft Probability Averaging
+```
+
 ---
 
 ### 🔹 Phase 6: Shape-from-Shading (SfS) Physical Prior Fusion
