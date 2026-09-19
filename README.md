@@ -13,7 +13,7 @@ graph TD
     B --> C["2. Symmetric Reflect Padding (128px) & Bicubic Resampling"]
     C --> D["3. Canonical North-Lit Image (Sun locked at Top/North)"]
     
-    subgraph Training Phase
+    subgraph Training_Phase["Training Phase"]
         D --> E["5-Fold Stratified Split (80% Train / 20% Holdout)"]
         E --> F["Inverse-Frequency Weighted Sampler (50/50 Batches)"]
         F --> G["ResNet-18 (1-Channel Adapted Pretrained Backbone)"]
@@ -22,7 +22,7 @@ graph TD
         I --> J["Scan Optimal Decision Cutoff: τ* = 0.47 (69.75% Bal Acc)"]
     end
 
-    subgraph Inference Phase (2,000 Test Images)
+    subgraph Inference_Phase["Inference Phase (2,000 Test Images)"]
         D --> K["Generate 8 Physics-Safe TTA Views per Image"]
         K --> L["Evaluate across all 5 Trained Fold Models (40 Passes / Sample)"]
         L --> M["Validation-Weighted Soft Probability Averaging"]
