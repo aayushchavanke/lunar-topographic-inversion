@@ -23,16 +23,31 @@ Rather than treating this as a generic black-box vision classification task, thi
 ║  • Exact Total Dataset Images:             9,854 Images                      ║
 ║      - Ground-Truth Training Images:       7,854 Images                      ║
 ║      - Unlabeled Evaluation Images:        2,000 Images                      ║
+║      - Domain-Adapted Expanded Dataset:    8,182 Images                      ║
 ║  • Optical Normalization Scale:            9,854 Images (100% Invariant)     ║
-║  • Neural Network Training Passes:         1,678,080 Forward/Backward Passes ║
+║  • Neural Network Training Passes:         1,387,405 Forward/Backward Passes ║
+║  • Models Trained Across Phases:           16 Distinct Neural Models         ║
 ║  • Test-Time Forward Passes:               80,000 Passes / Full Inference    ║
 ║  • Test-Time Augmentation Density:         40 Passes / Test Image            ║
-║  • Distinct Checkpoints Saved:             10 Models (42.7 MB each)          ║
+║  • Saved Model Checkpoints on Disk:        10 Checkpoints (427.0 MB total)   ║
 ║  • 5-Fold Stratified Validation Mean:      71.88% (± 0.78% Cross-Fold Var)   ║
 ║  • Peak Single-Fold Validation Score:      73.05% Balanced Accuracy          ║
-║  • Total Dedicated GPU Compute:            ~2.5+ Hours (NVIDIA RTX 3050 GPU) ║
+║  • Total Dedicated GPU Compute:            2.66 Hours (NVIDIA RTX 3050 CUDA) ║
+║  • Peak GPU Throughput Benchmark:          205.8 Images / Second             ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
+
+---
+
+### 📊 Multi-Phase Computational & Training Breakdown
+
+| Experimental Phase | Models Trained | Epochs per Model | Total Training Passes | GPU Compute Time | Validation Balanced Accuracy |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Phase 1: Exploratory Baselines & Imbalance Studies** | 3 models | 10–15 epochs | 274,800 passes | 22.0 mins | 68.2% – 69.1% |
+| **Phase 2: Hard-Mining 3-Cycle Error Study** | 3 models | 15 epochs | 318,060 passes | 25.4 mins | 64.5% – 68.9% |
+| **Phase 3: 5-Fold Stratified Baseline (1-Channel)** | 5 models | ~18 epochs | 565,470 passes | 35.2 mins | 68.1% – 71.7% |
+| **Phase 4: Grandmaster 5-Fold 3-Ch Physics Pipeline** | 5 models | ~7 epochs | 229,075 passes | 77.3 mins | **70.9% – 73.1%** |
+| **CUMULATIVE TOTALS** | **16 Models** | **—** | **1,387,405 Passes** | **2.66 Hours** | **Mean: 71.88% (Peak: 73.05%)** |
 
 ---
 
@@ -105,7 +120,7 @@ flowchart TD
 
 ---
 
-### Phase 4: The Hard-Example Mining Experiment (A Lesson in Machine Learning Humility)
+### Phase 4: The Hard-Mining Experiment (A Lesson in Machine Learning Humility)
 We designed a controlled 3-cycle scientific experiment on 7,068 training samples + 786 virgin holdout samples to test whether force-retraining the model on its hard mistakes could improve decision boundaries:
 * **Cycle 1 (Baseline)**: Holdout Balanced Accuracy = **68.86%**
 * **Cycle 2 (2× Weight on Errors)**: Holdout Balanced Accuracy = **66.19%**
@@ -116,7 +131,7 @@ We designed a controlled 3-cycle scientific experiment on 7,068 training samples
 
 ### Phase 5: Out-Of-Fold Continuous Decision Threshold Calibration
 * Standard binary classification defaults to a 0.50 probability cutoff.
-* Because the competition metric is **Balanced Accuracy** ($\frac{\text{Recall}_0 + \text{Recall}_1}{2}$), we performed continuous threshold scans across Out-Of-Fold distributions:
+* Because the competition metric is **Balanced Accuracy** ($\frac{\text{Recall}_0 + \text{Recall}_1}{2}$), we performed continuous threshold scans across Out-Of-Fold predictions:
   $$\tau^* = \arg\max_\tau \left( \frac{\text{Recall}_0(\tau) + \text{Recall}_1(\tau)}{2} \right) = \mathbf{0.495}$$
 * Moving from naive 0.50 to the calibrated threshold $\tau^*$ mathematically aligns sensitivity between both classes.
 
