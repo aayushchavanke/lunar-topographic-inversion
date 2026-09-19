@@ -18,6 +18,7 @@ def parse_args():
     parser.add_argument("--models_dir", type=str, default=".", help="Directory containing model_fold0.pt to model_fold4.pt")
     parser.add_argument("--n_folds", type=int, default=5, help="Number of fold models to ensemble")
     parser.add_argument("--threshold", type=float, default=None, help="Decision threshold for Class 1 (default: auto-loaded from optimal_threshold.json or 0.47)")
+    parser.add_argument("--sfs_alpha", type=float, default=0.10, help="Shape-from-Shading physical prior blend weight (default: 0.10)")
     parser.add_argument("--output_csv", type=str, default="submission.csv", help="Output submission CSV path")
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size for inference")
     parser.add_argument("--num_workers", type=int, default=0, help="DataLoader num_workers (0 for Windows)")
@@ -178,9 +179,21 @@ def run_tta_ensemble_inference():
 
             # Weighted average across all 5 fold models according to validation scores
             stacked_probs = torch.stack(model_batch_probs, dim=0) # (5, B)
-            ensemble_probs = (stacked_probs * fold_weights.view(-1, 1)).sum(dim=0) # (B,)
+            neural_probs = (stacked_probs * fold_weights.view(-1, 1)).sum(dim=0) # (B,)
 
-            all_ensemble_probs.extend(ensemble_probs.cpu().numpy().tolist())
+            # Physical Shape-from-Shading (SfS) Prior on central 128x128 crop (Sun locked to North)
+            # Top half vs Bottom half photometric luminance gradient
+            center_crop = images[:, 0, 64:192, 64:192]
+            top_half = center_crop[:, :64, :]
+            bot_half = center_crop[:, 64:, :]
+            delta_i = top_half.mean(dim=(1, 2)) - bot_half.mean(dim=(1, 2))
+            sfs_probs = torch.sigmoid(15.0 * delta_i)
+
+            # Blend neural ensemble with physical SfS prior
+            alpha = args.sfs_alpha
+            blended_probs = (1.0 - alpha) * neural_probs + alpha * sfs_probs
+
+            all_ensemble_probs.extend(blended_probs.cpu().numpy().tolist())
             all_image_ids.extend(list(image_ids))
 
             processed = len(all_image_ids)

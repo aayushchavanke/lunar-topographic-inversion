@@ -2,51 +2,60 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 
-def build_model(num_classes: int = 2, pretrained: bool = True, in_channels: int = 1) -> nn.Module:
+def build_model(arch: str = "resnet18", num_classes: int = 2, pretrained: bool = True, in_channels: int = 1) -> nn.Module:
     """
-    Builds a ResNet18 model adapted for single-channel grayscale input and 2-class classification.
+    Builds a vision model adapted for single-channel grayscale input and binary classification.
     
-    Averages the pretrained first-layer RGB weights across the 3 color channels
-    rather than reinitializing from scratch, preserving low-level feature detectors (edges, textures).
+    Supports:
+      - 'resnet18': Lightweight residual network.
+      - 'efficientnet_b0': Mobile inverted bottleneck with depthwise convolutions.
+      - 'convnext_tiny': Modern pure-convolutional network with 7x7 depthwise kernels.
     
-    Args:
-        num_classes: Number of output classes (default: 2).
-        pretrained: Whether to load ImageNet pretrained weights (default: True).
-        in_channels: Number of input channels (default: 1 for grayscale).
-        
-    Returns:
-        Adapted nn.Module ready for training or inference.
+    Averages pretrained RGB weights across color channels, preserving low-level feature detectors.
     """
-    weights = models.ResNet18_Weights.DEFAULT if pretrained else None
-    model = models.resnet18(weights=weights)
+    arch = arch.lower()
     
-    # 1. Adapt first conv layer for single-channel grayscale input
-    if in_channels != 3:
-        orig_conv1 = model.conv1
-        new_conv1 = nn.Conv2d(
-            in_channels=in_channels,
-            out_channels=orig_conv1.out_channels,
-            kernel_size=orig_conv1.kernel_size,
-            stride=orig_conv1.stride,
-            padding=orig_conv1.padding,
-            bias=orig_conv1.bias is not None
-        )
+    if arch == "resnet18":
+        weights = models.ResNet18_Weights.DEFAULT if pretrained else None
+        model = models.resnet18(weights=weights)
+        if in_channels != 3:
+            orig_conv = model.conv1
+            new_conv = nn.Conv2d(in_channels, orig_conv.out_channels, orig_conv.kernel_size, orig_conv.stride, orig_conv.padding, bias=orig_conv.bias is not None)
+            if pretrained:
+                with torch.no_grad():
+                    new_conv.weight.copy_(orig_conv.weight.mean(dim=1, keepdim=True))
+            model.conv1 = new_conv
+        model.fc = nn.Linear(model.fc.in_features, num_classes)
+        return model
         
-        if pretrained:
-            with torch.no_grad():
-                # Average weights across RGB channels (dim=1) -> shape: (64, 1, 7, 7)
-                avg_weights = orig_conv1.weight.mean(dim=1, keepdim=True)
-                new_conv1.weight.copy_(avg_weights)
-                if orig_conv1.bias is not None:
-                    new_conv1.bias.copy_(orig_conv1.bias)
-                    
-        model.conv1 = new_conv1
-        
-    # 2. Replace final fully connected layer for binary classification
-    in_features = model.fc.in_features
-    model.fc = nn.Linear(in_features, num_classes)
-    
-    return model
+    elif arch == "efficientnet_b0":
+        weights = models.EfficientNet_B0_Weights.DEFAULT if pretrained else None
+        model = models.efficientnet_b0(weights=weights)
+        if in_channels != 3:
+            orig_conv = model.features[0][0]
+            new_conv = nn.Conv2d(in_channels, orig_conv.out_channels, orig_conv.kernel_size, orig_conv.stride, orig_conv.padding, bias=orig_conv.bias is not None)
+            if pretrained:
+                with torch.no_grad():
+                    new_conv.weight.copy_(orig_conv.weight.mean(dim=1, keepdim=True))
+            model.features[0][0] = new_conv
+        model.classifier[1] = nn.Linear(model.classifier[1].in_features, num_classes)
+        return model
+
+    elif arch == "convnext_tiny":
+        weights = models.ConvNeXt_Tiny_Weights.DEFAULT if pretrained else None
+        model = models.convnext_tiny(weights=weights)
+        if in_channels != 3:
+            orig_conv = model.features[0][0]
+            new_conv = nn.Conv2d(in_channels, orig_conv.out_channels, orig_conv.kernel_size, orig_conv.stride, orig_conv.padding, bias=orig_conv.bias is not None)
+            if pretrained:
+                with torch.no_grad():
+                    new_conv.weight.copy_(orig_conv.weight.mean(dim=1, keepdim=True))
+            model.features[0][0] = new_conv
+        model.classifier[2] = nn.Linear(model.classifier[2].in_features, num_classes)
+        return model
+
+    else:
+        raise ValueError(f"Unsupported architecture: '{arch}'. Choose from 'resnet18', 'efficientnet_b0', 'convnext_tiny'.")
 
 def test_model_architecture():
     print("=" * 60)
