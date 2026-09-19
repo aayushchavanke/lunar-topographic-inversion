@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-orange.svg)](https://pytorch.org/)
 [![Metric](https://img.shields.io/badge/Metric-Balanced%20Accuracy-green.svg)](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.balanced_accuracy_score.html)
-[![Inference](https://img.shields.io/badge/Ensemble-40%20Passes%20%2B%20Gated%20Physics-purple.svg)](https://github.com/ParamPatil-03/Moon-Paradox)
+[![Inference](https://img.shields.io/badge/Ensemble-40%20Passes%20%2B%20Gated%20Physics-purple.svg)](https://github.com/aayushchavanke/The-Pareidolia-Paradox)
 [![Competition](https://img.shields.io/badge/IEEE%20SIES%20GST-The%20Pareidolia%20Paradox-gold.svg)](https://docs.google.com/forms/d/e/1FAIpQLSdqczbWyr0KwitRAb3waarjIpYOPykO_nzLpd1pEsTRNUmlLw/viewform)
 
 A physics-aligned, state-of-the-art deep learning system for binary classification of ambiguous lunar terrain crops into **Class 0 (Depression / Crater)** vs. **Class 1 (Elevation / Mound)**, evaluated on **Balanced Accuracy** ($\frac{\text{Recall}_0 + \text{Recall}_1}{2}$).
@@ -180,4 +180,4 @@ This produces [`submission.csv`](file:///c:/Users/Aayush/Downloads/Moon-Paradox-
 * **Submission File**: `submission.csv` (2,000 rows, headers `image_id,label`)
 * **Distribution**: 371 Craters (18.55%) / 1,629 Mounds (81.45%)
 * **Model Checkpoints**: `model_fold0.pt` – `model_fold4.pt` (Saved with best validation metrics)
-* **GitHub Repository**: `https://github.com/ParamPatil-03/Moon-Paradox`
+* **GitHub Repository**: `https://github.com/aayushchavanke/The-Pareidolia-Paradox`
