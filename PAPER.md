@@ -2,7 +2,7 @@
 
 **Author:** Aayush Chavanke  
 **Affiliation:** Machine Learning & Planetary Remote Sensing  
-**Code & Reproducibility:** [GitHub Repository](https://github.com/aayushchavanke/The-Pareidolia-Paradox)  
+**Code & Reproducibility:** [GitHub Repository](https://github.com/aayushchavanke/lunar-topographic-inversion)  
 **Format:** Prepared for arXiv / IEEE Transactions on Geoscience and Remote Sensing (TGRS) / Planetary Science
 
 ---
