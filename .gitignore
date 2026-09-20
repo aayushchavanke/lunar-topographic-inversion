@@ -10,7 +10,7 @@ venv/
 *.pth
 *.onnx
 
-# Local image folders
+# Local image folders & debug
 train_images/
 test_images/
 eval_images/
@@ -21,6 +21,13 @@ borderline/
 .idea/
 .DS_Store
 *.log
+
+# Paper Drafts & Auxiliaries (Kept local, excluded from competition repo)
+paper.tex
+references.bib
+PAPER.md
+paper_package.zip
+generate_paper_figures.py
 
 # Redundant test artifacts
 full_2000_physics_scan.csv
