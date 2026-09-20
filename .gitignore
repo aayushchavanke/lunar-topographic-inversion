@@ -1,32 +1,30 @@
-# Python artifacts
+# Python & Environment
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
-env/
 venv/
-.venv/
+.env
 
-# Large Datasets (Do NOT commit raw competition images to GitHub)
-train_images/
-eval_images/
-test_images/
-images/
-
-# Large Model Checkpoints (GitHub hard-blocks files > 100MB, e.g. best_model.pth)
-# Share checkpoints via Google Drive, OneDrive, or GitHub Releases
+# Model Checkpoints (Large binaries)
 *.pt
 *.pth
-*.ckpt
-*.bin
+*.onnx
 
-# IDE and OS
+# Local image folders
+train_images/
+test_images/
+eval_images/
+borderline/
+
+# System & IDE
 .vscode/
 .idea/
 .DS_Store
-Thumbs.db
-
-# Submission logs & temporary media
 *.log
-.tempmediaStorage/
+
+# Redundant test artifacts
+full_2000_physics_scan.csv
+submission_baseline_5fold.csv
+submission_final.csv
+submission_gated_physics.csv
+submission_grandmaster.csv
