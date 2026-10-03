@@ -1,0 +1,66 @@
+# Illumination-Aware Configuration
+# Adds your novel illumination-aware augmentations
+
+experiment:
+  name: "illumination_aware_yolov11n"
+  seed: 42
+
+model:
+  architecture: "yolov11n_custom"
+  pretrained: true
+  heads:
+    - detection
+    - morphology  # Add morphology classification
+
+  solar_gating:
+    enabled: true
+    embedding_dim: 4  # (cos_az, sin_az, cos_inc, sin_inc)
+
+data:
+  dataset: "sombench_wac"
+  img_size: 512
+  batch_size: 32
+  num_workers: 4
+
+  augmentations:
+    # Standard augmentations
+    horizontal_flip: 0.5
+    rotation: 15
+    brightness: 0.2
+    contrast: 0.2
+    blur: 0.3
+
+    # YOUR NOVEL AUGMENTATIONS
+    illumination_aware_flip: true  # Flip + update solar azimuth
+    canonical_rotation: true  # Rotate to canonical sun direction
+    solar_embedding: true  # Generate trigonometric embeddings
+
+training:
+  epochs: 100
+  optimizer: "AdamW"
+  learning_rate: 0.001
+  weight_decay: 0.0005
+  lr_scheduler: "cosine"
+  warmup_epochs: 5
+
+  early_stopping:
+    enabled: true
+    patience: 15
+    monitor: "val_loss"
+
+  checkpoint:
+    save_every: 5
+    save_best: true
+    monitor: "val_map50"
+
+loss:
+  detection: "CIoU"
+  classification: "cross_entropy"
+  morphology: "cross_entropy"
+  solar_regression: "cosine_similarity"
+
+  weights:
+    detection: 1.0
+    classification: 0.5
+    morphology: 0.7
+    solar_regression: 0.3

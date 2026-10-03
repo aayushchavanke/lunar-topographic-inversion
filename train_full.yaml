@@ -1,0 +1,84 @@
+# Full Multi-Task Configuration
+# Complete architecture with curriculum learning
+
+experiment:
+  name: "full_multitask_curriculum"
+  seed: 42
+
+model:
+  architecture: "yolov11n_custom"
+  pretrained: true
+  heads:
+    - detection
+    - morphology
+    - solar_regression
+
+  solar_gating:
+    enabled: true
+    embedding_dim: 4
+    gating_type: "channel_attention"
+
+data:
+  dataset: "sombench_wac"
+  img_size: 512
+  batch_size: 32
+  num_workers: 4
+
+  augmentations:
+    # All augmentations including synthetic illumination reversal
+    horizontal_flip: 0.5
+    rotation: 15
+    brightness: 0.2
+    contrast: 0.2
+    blur: 0.3
+
+    illumination_aware_flip: true
+    canonical_rotation: true
+    solar_embedding: true
+    synthetic_illumination_reversal: true  # Generate paired samples
+
+training:
+  # Curriculum learning schedule
+  curriculum:
+    enabled: true
+    phases:
+      - name: "phase1_easy"
+        epochs: 50
+        solar_incidence_range: [40, 70]  # Moderate illumination
+      - name: "phase2_hard"
+        epochs: 30
+        solar_incidence_range: [0, 90]  # All angles
+      - name: "phase3_ambiguous"
+        epochs: 20
+        focus: "paired_samples"  # Crater↔mound pairs
+
+  epochs: 100
+  optimizer: "AdamW"
+  learning_rate: 0.001
+  weight_decay: 0.0005
+  lr_scheduler: "cosine"
+  warmup_epochs: 5
+
+  early_stopping:
+    enabled: true
+    patience: 15
+    monitor: "val_loss"
+
+  checkpoint:
+    save_every: 5
+    save_best: true
+    monitor: "val_map50"
+
+loss:
+  detection: "CIoU"
+  classification: "cross_entropy"
+  morphology: "focal"  # Focal loss for imbalanced morphology classes
+  solar_regression: "cosine_similarity"
+  illumination_consistency: "margin_ranking"  # Enforce shadow direction consistency
+
+  weights:
+    detection: 1.0
+    classification: 0.5
+    morphology: 0.7
+    solar_regression: 0.3
+    illumination_consistency: 0.3
